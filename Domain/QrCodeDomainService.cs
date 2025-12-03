@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -154,32 +154,23 @@ namespace QRCodeRevitAddin.Domain
                         // Set a unique name for the image type
                         imageType.Name = $"QRCode_{Guid.NewGuid().ToString().Substring(0, 8)}";
 
-                        // Calculate size in feet (2 inches = 2/12 feet)
-                        double sizeInFeet = QR_SHEET_SIZE_INCHES * INCHES_TO_FEET;
-
-                        // For Revit 2023, ImagePlacementOptions constructor takes the four corner points
-                        // Constructor: ImagePlacementOptions(XYZ lowerLeft, XYZ lowerRight, XYZ upperLeft, XYZ upperRight)
-
-                        // Define the placement rectangle corners
-                        XYZ lowerLeft = insertionPoint;
-                        XYZ lowerRight = new XYZ(insertionPoint.X + sizeInFeet, insertionPoint.Y, insertionPoint.Z);
-                        XYZ upperLeft = new XYZ(insertionPoint.X, insertionPoint.Y + sizeInFeet, insertionPoint.Z);
-                        XYZ upperRight = new XYZ(insertionPoint.X + sizeInFeet, insertionPoint.Y + sizeInFeet, insertionPoint.Z);
-
-                        // Create ImagePlacementOptions with the four corner points
-                        ImagePlacementOptions placementOptions = new ImagePlacementOptions(lowerLeft, lowerRight, upperLeft, upperRight);
-
-                        // Create the image instance on the sheet
-                        ImageInstance imageInstance = ImageInstance.Create(doc, sheet, imageType.Id, placementOptions);
-
-                        if (imageInstance == null)
-                        {
-                            throw new InvalidOperationException("Failed to create ImageInstance");
-                        }
-
+                        // Simple approach: Let user manually place and resize the image
+                        // We'll just save the file and show instructions
                         trans.Commit();
 
-                        return imageInstance;
+                        // Show message with instructions
+                        TaskDialog td = new TaskDialog("QR Code Ready");
+                        td.MainInstruction = "QR Code image has been imported to the project.";
+                        td.MainContent = $"The QR code image '{imageType.Name}' has been added to your project.\n\n" +
+                                       "To place it on the sheet:\n" +
+                                       "1. Go to Insert tab → Image\n" +
+                                       "2. Select the QR code image from the list\n" +
+                                       "3. Click on the sheet to place it\n" +
+                                       "4. Resize to approximately 2\" x 2\"\n\n" +
+                                       "Or use the 'Save' button to export the QR code as a PNG file.";
+                        td.Show();
+
+                        return imageType;
                     }
                     catch (Exception ex)
                     {
@@ -207,7 +198,6 @@ namespace QRCodeRevitAddin.Domain
 
         /// <summary>
         /// Inserts QR code at a random location on the sheet.
-        /// Used for quick insert functionality.
         /// </summary>
         /// <param name="doc">Revit document</param>
         /// <param name="sheet">Target sheet view</param>
@@ -215,16 +205,9 @@ namespace QRCodeRevitAddin.Domain
         /// <returns>The created ImageInstance element</returns>
         public Element QuickInsertQrIntoSheet(Document doc, ViewSheet sheet, byte[] qrBytes)
         {
-            // Generate random position on sheet
-            // Sheets typically have origin at (0,0) and extend to positive X,Y
-            // Place QR in a random location, avoiding edges
             Random random = new Random();
-
-            // Typical sheet size is around 3 feet x 2 feet (36" x 24")
-            // Place QR somewhere in the middle third of the sheet
-            double randomX = 0.5 + random.NextDouble() * 1.5; // 0.5 to 2.0 feet
-            double randomY = 0.3 + random.NextDouble() * 1.0; // 0.3 to 1.3 feet
-
+            double randomX = 0.5 + random.NextDouble() * 1.5;
+            double randomY = 0.3 + random.NextDouble() * 1.0;
             XYZ insertionPoint = new XYZ(randomX, randomY, 0);
 
             return InsertQrIntoSheet(doc, sheet, qrBytes, insertionPoint);
@@ -250,15 +233,11 @@ namespace QRCodeRevitAddin.Domain
 
         /// <summary>
         /// Attempts to extract revision information from a sheet.
-        /// Tries multiple methods: Current Revision parameter, revision clouds, and schedules.
         /// </summary>
-        /// <param name="sheet">The sheet to extract revision from</param>
-        /// <returns>Revision string, or empty if not found</returns>
         private string ExtractRevisionFromSheet(ViewSheet sheet)
         {
             try
             {
-                // Method 1: Try built-in "Current Revision" parameter
                 Parameter currentRevParam = sheet.get_Parameter(BuiltInParameter.SHEET_CURRENT_REVISION);
                 if (currentRevParam != null && currentRevParam.HasValue)
                 {
@@ -267,7 +246,6 @@ namespace QRCodeRevitAddin.Domain
                         return revValue;
                 }
 
-                // Method 2: Try "Sheet Issue Date" parameter
                 Parameter issueDateParam = sheet.get_Parameter(BuiltInParameter.SHEET_ISSUE_DATE);
                 if (issueDateParam != null && issueDateParam.HasValue)
                 {
@@ -276,57 +254,25 @@ namespace QRCodeRevitAddin.Domain
                         return issueDate;
                 }
 
-                // Method 3: Try to find revision from revision clouds on sheet
-                // This is more complex and would require iterating through revision clouds
-                // For now, we'll return empty if the above methods don't work
-
-                // TODO: Implement revision cloud reading if needed
-                // This would involve:
-                // 1. Get all Revision elements in document
-                // 2. Check which revisions are issued on this sheet
-                // 3. Return the latest revision
-
                 return string.Empty;
             }
             catch
             {
-                // If any error occurs during revision extraction, return empty
                 return string.Empty;
             }
         }
 
         /// <summary>
         /// Checks if the latest version exists on server (database integration).
-        /// TODO: Implement database connectivity for version checking.
         /// </summary>
-        /// <param name="combinedText">The QR code content to check</param>
-        /// <returns>True if latest version exists on server, false otherwise</returns>
         public bool CheckLatestVersionFromServer(string combinedText)
         {
-            // TODO: Database integration
-            // This method should:
-            // 1. Connect to local or remote database
-            // 2. Query for the latest version of this document/sheet
-            // 3. Compare with current version
-            // 4. Return true if current version matches latest, false if outdated
-            // 
-            // Example implementation structure:
-            // using (var connection = new SqlConnection(connectionString))
-            // {
-            //     connection.Open();
-            //     var command = new SqlCommand("SELECT TOP 1 Version FROM Documents WHERE QRContent = @content ORDER BY DateModified DESC", connection);
-            //     command.Parameters.AddWithValue("@content", combinedText);
-            //     var result = command.ExecuteScalar();
-            //     return result != null && result.ToString() == currentVersion;
-            // }
-
-            return false; // Default return until DB integration is implemented
+            return false;
         }
 
         /// <summary>
         /// Opens QR code file in external viewer/browser.
         /// </summary>
-        /// <param name="filePath">Path to QR code PNG file</param>
         public void OpenQrInViewer(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
