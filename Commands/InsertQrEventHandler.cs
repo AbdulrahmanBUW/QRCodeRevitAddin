@@ -4,10 +4,6 @@ using Autodesk.Revit.UI;
 
 namespace QRCodeRevitAddin.Commands
 {
-    /// <summary>
-    /// External event handler for inserting QR codes from modeless dialogs.
-    /// Executes the insert operation within Revit's API context.
-    /// </summary>
     public class InsertQrEventHandler : IExternalEventHandler
     {
         private byte[] _qrBytes;
@@ -17,19 +13,9 @@ namespace QRCodeRevitAddin.Commands
         private string _resultMessage;
         private bool _success;
 
-        /// <summary>
-        /// Gets the result message after execution.
-        /// </summary>
         public string ResultMessage => _resultMessage;
-
-        /// <summary>
-        /// Gets whether the operation was successful.
-        /// </summary>
         public bool Success => _success;
 
-        /// <summary>
-        /// Sets the data for the next insert operation.
-        /// </summary>
         public void SetInsertData(byte[] qrBytes, ViewSheet sheet, XYZ insertionPoint, bool isQuickInsert)
         {
             _qrBytes = qrBytes;
@@ -40,9 +26,6 @@ namespace QRCodeRevitAddin.Commands
             _resultMessage = string.Empty;
         }
 
-        /// <summary>
-        /// Executes the insert operation within Revit's API context.
-        /// </summary>
         public void Execute(UIApplication app)
         {
             try
@@ -70,12 +53,15 @@ namespace QRCodeRevitAddin.Commands
                 if (result != null)
                 {
                     _success = true;
-                    _resultMessage = "QR code inserted successfully";
+                    _resultMessage = "QR code inserted successfully onto the sheet!";
+
+                    // Select the inserted QR code
+                    app.ActiveUIDocument.Selection.SetElementIds(new ElementId[] { result.Id });
                 }
                 else
                 {
                     _success = false;
-                    _resultMessage = "Failed to create image element";
+                    _resultMessage = "Failed to insert image element";
                 }
             }
             catch (Exception ex)
@@ -85,9 +71,6 @@ namespace QRCodeRevitAddin.Commands
             }
         }
 
-        /// <summary>
-        /// Returns the name of this external event handler.
-        /// </summary>
         public string GetName()
         {
             return "Insert QR Code Event";

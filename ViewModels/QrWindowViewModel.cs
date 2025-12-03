@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
@@ -175,14 +175,6 @@ namespace QRCodeRevitAddin.ViewModels
                 QrPreviewImage = BytesToBitmapImage(_currentQrBytes);
 
                 IsQrGenerated = true;
-
-                // Optional: Check database for latest version
-                // bool isLatest = _service.CheckLatestVersionFromServer(_documentInfo.CombinedText);
-                // if (!isLatest)
-                // {
-                //     MessageBox.Show("Warning: A newer version may exist on the server.",
-                //         "Version Check", MessageBoxButton.OK, MessageBoxImage.Information);
-                // }
             }
             catch (Exception ex)
             {
@@ -212,7 +204,12 @@ namespace QRCodeRevitAddin.ViewModels
 
                 if (saveDialog.ShowDialog() == true)
                 {
-                    _service.SaveQrCodeToFile(_currentQrBytes, saveDialog.FileName);
+                    // Create temp file first, then copy to destination
+                    string tempPath = _service.CreateTempQrFile(_currentQrBytes);
+                    File.Copy(tempPath, saveDialog.FileName, true);
+
+                    // Clean up temp file
+                    try { File.Delete(tempPath); } catch { }
 
                     MessageBox.Show($"QR code saved successfully to:\n{saveDialog.FileName}",
                         "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -243,14 +240,8 @@ namespace QRCodeRevitAddin.ViewModels
                     return;
                 }
 
-                // Prompt user to pick insertion point
-                XYZ insertionPoint = PromptForInsertionPoint();
-
-                if (insertionPoint == null)
-                {
-                    // User cancelled
-                    return;
-                }
+                // Use a default location instead of prompting
+                XYZ insertionPoint = new XYZ(1.0, 1.0, 0); // 1 foot from left, 1 foot from bottom
 
                 // Set data for external event and raise it
                 _insertEventHandler.SetInsertData(_currentQrBytes, _currentSheet, insertionPoint, false);
@@ -262,13 +253,13 @@ namespace QRCodeRevitAddin.ViewModels
                 // Show result
                 if (_insertEventHandler.Success)
                 {
-                    MessageBox.Show("QR code inserted successfully into the sheet.",
+                    MessageBox.Show("QR code inserted successfully onto the sheet!",
                         "Insert Successful", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
-                    MessageBox.Show($"Insert operation completed.\n\n{_insertEventHandler.ResultMessage}",
-                        "Insert Result", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show($"Insert operation failed.\n\n{_insertEventHandler.ResultMessage}",
+                        "Insert Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
@@ -296,7 +287,7 @@ namespace QRCodeRevitAddin.ViewModels
                     return;
                 }
 
-                // Set data for external event (with dummy insertion point for quick insert)
+                // Set data for external event (quick insert will generate random location)
                 _insertEventHandler.SetInsertData(_currentQrBytes, _currentSheet, XYZ.Zero, true);
                 _insertEvent.Raise();
 
@@ -311,8 +302,8 @@ namespace QRCodeRevitAddin.ViewModels
                 }
                 else
                 {
-                    MessageBox.Show($"Quick insert operation completed.\n\n{_insertEventHandler.ResultMessage}",
-                        "Quick Insert Result", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show($"Quick insert operation failed.\n\n{_insertEventHandler.ResultMessage}",
+                        "Quick Insert Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
@@ -360,6 +351,8 @@ namespace QRCodeRevitAddin.ViewModels
                 // Save to temp file and open
                 string tempPath = _service.CreateTempQrFile(_currentQrBytes);
                 _service.OpenQrInViewer(tempPath);
+
+                // Note: temp file will be cleaned up by OS or when Revit closes
             }
             catch (Exception ex)
             {
@@ -383,7 +376,7 @@ namespace QRCodeRevitAddin.ViewModels
                 // Prompt user to pick point on sheet
                 TaskDialog.Show("Pick Insertion Point",
                     "Click on the sheet to select where to place the QR code.\n\n" +
-                    "The QR code will be imported to the project.");
+                    "The QR code will be placed at the clicked point.");
 
                 Selection selection = _uiDoc.Selection;
                 XYZ pickedPoint = selection.PickPoint(ObjectSnapTypes.None, "Click to place QR code");
