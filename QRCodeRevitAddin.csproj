@@ -59,6 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="App.cs" />
+    <Compile Include="Commands\InsertQrEventHandler.cs" />
     <Compile Include="Commands\ShowQrWindowCommand.cs" />
     <Compile Include="Commands\InsertQrFromSheetCommand.cs" />
     <Compile Include="Domain\QrCodeDomainService.cs" />

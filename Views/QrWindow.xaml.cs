@@ -37,7 +37,7 @@ namespace QRCodeRevitAddin.Views
             {
                 QrWindowViewModel viewModel = new QrWindowViewModel(uiDoc, autoFillFromSheet);
                 QrWindow window = new QrWindow(viewModel);
-                window.ShowDialog();
+                window.Show(); // Changed from ShowDialog() to Show() - now modeless!
             }
             catch (System.Exception ex)
             {

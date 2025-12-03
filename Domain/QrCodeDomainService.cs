@@ -223,12 +223,81 @@ namespace QRCodeRevitAddin.Domain
             if (sheet == null)
                 throw new ArgumentNullException(nameof(sheet));
 
-            string sheetNumber = sheet.SheetNumber ?? string.Empty;
-            string sheetName = sheet.Name ?? string.Empty;
-            string revision = ExtractRevisionFromSheet(sheet);
-            string date = DateTime.Now.ToString("dd/MM/yyyy");
+            // Extract TLBL_DWG_NO (custom parameter for drawing number/sheet name)
+            string dwgNo = GetParameterValueAsString(sheet, "TLBL_DWG_NO");
 
-            return new Models.DocumentInfo(sheetNumber, sheetName, revision, date);
+            // Extract sheet name (built-in)
+            string sheetName = sheet.Name ?? string.Empty;
+
+            // Extract revision
+            string revision = ExtractRevisionFromSheet(sheet);
+
+            // Extract Sheet Issue Date (built-in parameter)
+            string date = GetSheetIssueDate(sheet);
+
+            // Extract TLBL_CHECKEDBY (custom parameter)
+            string checkedBy = GetParameterValueAsString(sheet, "TLBL_CHECKEDBY");
+
+            return new Models.DocumentInfo(dwgNo, sheetName, revision, date, checkedBy);
+        }
+
+        /// <summary>
+        /// Gets parameter value as string by parameter name.
+        /// </summary>
+        private string GetParameterValueAsString(ViewSheet sheet, string parameterName)
+        {
+            try
+            {
+                // Try to get parameter by name
+                Parameter param = sheet.LookupParameter(parameterName);
+                if (param != null && param.HasValue)
+                {
+                    if (param.StorageType == StorageType.String)
+                    {
+                        string value = param.AsString();
+                        if (!string.IsNullOrWhiteSpace(value))
+                            return value;
+                    }
+                    else if (param.StorageType == StorageType.Integer)
+                    {
+                        return param.AsInteger().ToString();
+                    }
+                    else if (param.StorageType == StorageType.Double)
+                    {
+                        return param.AsDouble().ToString();
+                    }
+                }
+
+                return string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Gets Sheet Issue Date from built-in parameter.
+        /// </summary>
+        private string GetSheetIssueDate(ViewSheet sheet)
+        {
+            try
+            {
+                Parameter issueDateParam = sheet.get_Parameter(BuiltInParameter.SHEET_ISSUE_DATE);
+                if (issueDateParam != null && issueDateParam.HasValue)
+                {
+                    string issueDate = issueDateParam.AsString();
+                    if (!string.IsNullOrWhiteSpace(issueDate))
+                        return issueDate;
+                }
+
+                // Fallback to current date if no issue date is set
+                return DateTime.Now.ToString("dd/MM/yyyy");
+            }
+            catch
+            {
+                return DateTime.Now.ToString("dd/MM/yyyy");
+            }
         }
 
         /// <summary>

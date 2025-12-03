@@ -13,11 +13,12 @@ namespace QRCodeRevitAddin.Models
         private string _revision;
         private string _project;
         private string _date;
+        private string _checkedBy;
 
         /// <summary>
         /// Name or sheet number field.
         /// For manual entry: Document/Drawing name.
-        /// For sheet extraction: Sheet number.
+        /// For sheet extraction: TLBL_DWG_NO parameter.
         /// </summary>
         public string Name
         {
@@ -73,6 +74,7 @@ namespace QRCodeRevitAddin.Models
 
         /// <summary>
         /// Date field in dd/MM/yyyy format.
+        /// For sheet extraction: Sheet Issue Date parameter.
         /// Defaults to today's date.
         /// </summary>
         public string Date
@@ -90,14 +92,32 @@ namespace QRCodeRevitAddin.Models
         }
 
         /// <summary>
+        /// Checked By field.
+        /// For sheet extraction: TLBL_CHECKEDBY parameter.
+        /// </summary>
+        public string CheckedBy
+        {
+            get => _checkedBy;
+            set
+            {
+                if (_checkedBy != value)
+                {
+                    _checkedBy = value;
+                    OnPropertyChanged(nameof(CheckedBy));
+                    OnPropertyChanged(nameof(CombinedText));
+                }
+            }
+        }
+
+        /// <summary>
         /// Combined text that will be encoded in the QR code.
-        /// Format: "{Name} | {Revision} | {Project} | {Date}"
+        /// Format: "{Name} | {Revision} | {Project} | {Date} | {CheckedBy}"
         /// </summary>
         public string CombinedText
         {
             get
             {
-                return $"{Name ?? ""} | {Revision ?? ""} | {Project ?? ""} | {Date ?? ""}";
+                return $"{Name ?? ""} | {Revision ?? ""} | {Project ?? ""} | {Date ?? ""} | {CheckedBy ?? ""}";
             }
         }
 
@@ -110,42 +130,39 @@ namespace QRCodeRevitAddin.Models
             _revision = string.Empty;
             _project = string.Empty;
             _date = DateTime.Now.ToString("dd/MM/yyyy");
+            _checkedBy = string.Empty;
         }
 
         /// <summary>
         /// Constructor with all fields.
         /// </summary>
-        /// <param name="name">Name or sheet number</param>
-        /// <param name="revision">Revision text</param>
-        /// <param name="project">Project name</param>
-        /// <param name="date">Date in dd/MM/yyyy format</param>
-        public DocumentInfo(string name, string revision, string project, string date)
+        public DocumentInfo(string name, string revision, string project, string date, string checkedBy)
         {
             _name = name ?? string.Empty;
             _revision = revision ?? string.Empty;
             _project = project ?? string.Empty;
             _date = date ?? DateTime.Now.ToString("dd/MM/yyyy");
+            _checkedBy = checkedBy ?? string.Empty;
         }
 
         /// <summary>
         /// Validates that all required fields have values.
         /// </summary>
-        /// <returns>True if all fields are non-empty, false otherwise</returns>
         public bool IsValid()
         {
             return !string.IsNullOrWhiteSpace(Name) &&
                    !string.IsNullOrWhiteSpace(Revision) &&
                    !string.IsNullOrWhiteSpace(Project) &&
-                   !string.IsNullOrWhiteSpace(Date);
+                   !string.IsNullOrWhiteSpace(Date) &&
+                   !string.IsNullOrWhiteSpace(CheckedBy);
         }
 
         /// <summary>
         /// Creates a copy of this DocumentInfo object.
         /// </summary>
-        /// <returns>A new DocumentInfo with the same values</returns>
         public DocumentInfo Clone()
         {
-            return new DocumentInfo(Name, Revision, Project, Date);
+            return new DocumentInfo(Name, Revision, Project, Date, CheckedBy);
         }
 
         #region INotifyPropertyChanged Implementation

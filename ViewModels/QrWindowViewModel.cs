@@ -16,12 +16,15 @@ namespace QRCodeRevitAddin.ViewModels
     /// <summary>
     /// ViewModel for the QR Code window.
     /// Implements MVVM pattern with commands for UI interactions.
+    /// Uses ExternalEvent for operations that require Revit API transactions.
     /// </summary>
     public class QrWindowViewModel : INotifyPropertyChanged
     {
         private readonly UIDocument _uiDoc;
         private readonly Document _doc;
         private readonly QrCodeDomainService _service;
+        private readonly Commands.InsertQrEventHandler _insertEventHandler;
+        private readonly ExternalEvent _insertEvent;
         private DocumentInfo _documentInfo;
         private BitmapImage _qrPreviewImage;
         private byte[] _currentQrBytes;
@@ -121,6 +124,10 @@ namespace QRCodeRevitAddin.ViewModels
             _documentInfo = new DocumentInfo();
             _isQrGenerated = false;
 
+            // Create external event for insert operations
+            _insertEventHandler = new Commands.InsertQrEventHandler();
+            _insertEvent = ExternalEvent.Create(_insertEventHandler);
+
             // Try to get current sheet
             _currentSheet = _doc.ActiveView as ViewSheet;
 
@@ -206,7 +213,7 @@ namespace QRCodeRevitAddin.ViewModels
                 if (saveDialog.ShowDialog() == true)
                 {
                     _service.SaveQrCodeToFile(_currentQrBytes, saveDialog.FileName);
-                    
+
                     MessageBox.Show($"QR code saved successfully to:\n{saveDialog.FileName}",
                         "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -238,20 +245,30 @@ namespace QRCodeRevitAddin.ViewModels
 
                 // Prompt user to pick insertion point
                 XYZ insertionPoint = PromptForInsertionPoint();
-                
+
                 if (insertionPoint == null)
                 {
                     // User cancelled
                     return;
                 }
 
-                // Insert QR into sheet
-                Element insertedElement = _service.InsertQrIntoSheet(_doc, _currentSheet, _currentQrBytes, insertionPoint);
+                // Set data for external event and raise it
+                _insertEventHandler.SetInsertData(_currentQrBytes, _currentSheet, insertionPoint, false);
+                _insertEvent.Raise();
 
-                if (insertedElement != null)
+                // Give a moment for the event to execute
+                System.Threading.Thread.Sleep(100);
+
+                // Show result
+                if (_insertEventHandler.Success)
                 {
                     MessageBox.Show("QR code inserted successfully into the sheet.",
                         "Insert Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show($"Insert operation completed.\n\n{_insertEventHandler.ResultMessage}",
+                        "Insert Result", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
@@ -279,13 +296,23 @@ namespace QRCodeRevitAddin.ViewModels
                     return;
                 }
 
-                // Insert QR at random location
-                Element insertedElement = _service.QuickInsertQrIntoSheet(_doc, _currentSheet, _currentQrBytes);
+                // Set data for external event (with dummy insertion point for quick insert)
+                _insertEventHandler.SetInsertData(_currentQrBytes, _currentSheet, XYZ.Zero, true);
+                _insertEvent.Raise();
 
-                if (insertedElement != null)
+                // Give a moment for the event to execute
+                System.Threading.Thread.Sleep(100);
+
+                // Show result
+                if (_insertEventHandler.Success)
                 {
                     MessageBox.Show("QR code inserted successfully at a random location on the sheet.",
                         "Quick Insert Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show($"Quick insert operation completed.\n\n{_insertEventHandler.ResultMessage}",
+                        "Quick Insert Result", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
@@ -356,7 +383,7 @@ namespace QRCodeRevitAddin.ViewModels
                 // Prompt user to pick point on sheet
                 TaskDialog.Show("Pick Insertion Point",
                     "Click on the sheet to select where to place the QR code.\n\n" +
-                    "The QR code will be 2\" x 2\" in size.");
+                    "The QR code will be imported to the project.");
 
                 Selection selection = _uiDoc.Selection;
                 XYZ pickedPoint = selection.PickPoint(ObjectSnapTypes.None, "Click to place QR code");
