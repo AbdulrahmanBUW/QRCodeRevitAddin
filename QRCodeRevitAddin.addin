@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>QR Code Revit Add-in</Name>
+    <Assembly>QRCodeRevitAddin\QRCodeRevitAddin.dll</Assembly>
+    <AddInId>A1B2C3D4-E5F6-4A5B-9C8D-7E6F5A4B3C2D</AddInId>
+    <FullClassName>QRCodeRevitAddin.App</FullClassName>
+    <VendorId>QRCODE</VendorId>
+    <VendorDescription>QR Code Generator for Revit Sheets</VendorDescription>
+  </AddIn>
+</RevitAddIns>

@@ -1,0 +1,197 @@
+<Window x:Class="QRCodeRevitAddin.Views.QrWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="QR Code Generator" 
+        Height="600" 
+        Width="500"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResize"
+        Background="#F5F5F5">
+
+    <Window.Resources>
+        <!-- Button Style -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#0078D4"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#005A9E"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#CCCCCC"/>
+                    <Setter Property="Foreground" Value="#666666"/>
+                    <Setter Property="Cursor" Value="No"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Background" Value="#E0E0E0"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#D0D0D0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- TextBox Style -->
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="0,5"/>
+        </Style>
+
+        <!-- Label Style -->
+        <Style TargetType="Label">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#333333"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="QR Code Generator for Sheets" 
+                       FontSize="20" 
+                       FontWeight="Bold" 
+                       Foreground="#0078D4"
+                       HorizontalAlignment="Center"/>
+            <TextBlock Text="Generate QR codes from manual input or sheet data" 
+                       FontSize="12" 
+                       Foreground="#666666"
+                       HorizontalAlignment="Center"
+                       Margin="0,5,0,0"/>
+        </StackPanel>
+
+        <!-- Input Fields -->
+        <GroupBox Grid.Row="1" Header="Document Information" Padding="10" Margin="0,0,0,15">
+            <StackPanel>
+                <Label Content="Name / Sheet Number:"/>
+                <TextBox Text="{Binding DocumentInfo.Name, UpdateSourceTrigger=PropertyChanged}" 
+                         ToolTip="Enter document name or sheet number"/>
+
+                <Label Content="Revision / Sheet Name:" Margin="0,10,0,0"/>
+                <TextBox Text="{Binding DocumentInfo.Revision, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Enter revision or sheet name"/>
+
+                <Label Content="Project:" Margin="0,10,0,0"/>
+                <TextBox Text="{Binding DocumentInfo.Project, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Enter project name"/>
+
+                <Label Content="Date (dd/MM/yyyy):" Margin="0,10,0,0"/>
+                <TextBox Text="{Binding DocumentInfo.Date, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Enter date in dd/MM/yyyy format"/>
+
+                <Button Content="📋 Use Sheet Data" 
+                        Style="{StaticResource SecondaryButton}"
+                        Command="{Binding UseSheetDataCommand}"
+                        IsEnabled="{Binding CanUseSheetData}"
+                        ToolTip="Automatically fill fields from the currently selected sheet"
+                        Margin="0,10,0,0"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- QR Preview and Actions -->
+        <GroupBox Grid.Row="2" Header="QR Code Preview" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Preview Image -->
+                <Border Grid.Row="0" 
+                        Background="White" 
+                        BorderBrush="#CCCCCC" 
+                        BorderThickness="2"
+                        CornerRadius="4"
+                        Margin="0,0,0,10">
+                    <Viewbox Stretch="Uniform" Margin="10">
+                        <Image Source="{Binding QrPreviewImage}" 
+                               Width="300" 
+                               Height="300"
+                               Stretch="Uniform"/>
+                    </Viewbox>
+                </Border>
+
+                <!-- Preview Text -->
+                <TextBlock Grid.Row="1"
+                           Text="{Binding DocumentInfo.CombinedText}"
+                           TextWrapping="Wrap"
+                           FontSize="11"
+                           Foreground="#666666"
+                           TextAlignment="Center"
+                           Margin="0,5"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- Action Buttons -->
+        <StackPanel Grid.Row="3" Margin="0,15,0,0">
+            <Button Content="🔨 Generate QR Code" 
+                    Style="{StaticResource PrimaryButton}"
+                    Command="{Binding GenerateQrCommand}"
+                    ToolTip="Generate QR code from the fields above"/>
+
+            <Separator Margin="0,10"/>
+
+            <UniformGrid Columns="2">
+                <Button Content="💾 Save" 
+                        Style="{StaticResource SecondaryButton}"
+                        Command="{Binding SaveQrCommand}"
+                        IsEnabled="{Binding CanSave}"
+                        ToolTip="Save QR code as PNG file"/>
+
+                <Button Content="🖼️ Open in Viewer" 
+                        Style="{StaticResource SecondaryButton}"
+                        Command="{Binding OpenInViewerCommand}"
+                        IsEnabled="{Binding CanSave}"
+                        ToolTip="Open QR code in external image viewer"/>
+            </UniformGrid>
+
+            <UniformGrid Columns="2">
+                <Button Content="📍 Insert into Sheet" 
+                        Style="{StaticResource SecondaryButton}"
+                        Command="{Binding InsertQrCommand}"
+                        IsEnabled="{Binding CanInsert}"
+                        ToolTip="Click to place QR code at a specific location on the sheet"/>
+
+                <Button Content="⚡ Quick Insert" 
+                        Style="{StaticResource SecondaryButton}"
+                        Command="{Binding QuickInsertCommand}"
+                        IsEnabled="{Binding CanInsert}"
+                        ToolTip="Quickly insert QR code at a random location on the sheet"/>
+            </UniformGrid>
+        </StackPanel>
+    </Grid>
+</Window>
