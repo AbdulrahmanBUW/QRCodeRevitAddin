@@ -5,7 +5,7 @@
     <Assembly>QRCodeRevitAddin.dll</Assembly>
     <AddInId>A1B2C3D4-E5F6-4A5B-9C8D-7E6F5A4B3C2D</AddInId>
     <FullClassName>QRCodeRevitAddin.App</FullClassName>
-    <VendorId>QRCODE</VendorId>
+    <VendorId>DEAXO GmbH</VendorId>
     <VendorDescription>QR Code Generator for Revit Sheets</VendorDescription>
   </AddIn>
 </RevitAddIns>
