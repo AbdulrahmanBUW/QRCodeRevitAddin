@@ -8,6 +8,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using QRCodeRevitAddin.Domain;
 using QRCodeRevitAddin.Models;
+using QRCodeRevitAddin.Utils;
 using Microsoft.Win32;
 
 namespace QRCodeRevitAddin.ViewModels
@@ -86,47 +87,66 @@ namespace QRCodeRevitAddin.ViewModels
 
         public QrWindowViewModel(UIDocument uiDoc, bool autoFillFromSheet = false)
         {
-            _uiDoc = uiDoc ?? throw new ArgumentNullException(nameof(uiDoc));
-            _doc = _uiDoc.Document;
-            _service = new QrCodeDomainService();
-            _documentInfo = new DocumentInfo();
-            _isQrGenerated = false;
-
-            _insertEventHandler = new Commands.InsertQrEventHandler();
-            _insertEvent = ExternalEvent.Create(_insertEventHandler);
-
-            _currentSheet = _doc.ActiveView as ViewSheet;
-
-            GenerateQrCommand = new RelayCommand(GenerateQr, CanExecuteGenerateQr);
-            SaveQrCommand = new RelayCommand(SaveQr, () => CanSave);
-            InsertQrCommand = new RelayCommand(InsertQr, () => CanInsert);
-            UseSheetDataCommand = new RelayCommand(UseSheetData, () => CanUseSheetData);
-            OpenInViewerCommand = new RelayCommand(OpenInViewer, () => CanSave);
-
-            if (autoFillFromSheet && _currentSheet != null)
+            try
             {
-                UseSheetData();
-            }
+                Logger.LogInfo("Initializing QR Window ViewModel");
 
-            OnPropertyChanged(nameof(CanUseSheetData));
-            OnPropertyChanged(nameof(CanInsert));
+                _uiDoc = uiDoc ?? throw new ArgumentNullException(nameof(uiDoc));
+                _doc = _uiDoc.Document;
+                _service = new QrCodeDomainService();
+                _documentInfo = new DocumentInfo();
+                _isQrGenerated = false;
+
+                _insertEventHandler = new Commands.InsertQrEventHandler();
+                _insertEvent = ExternalEvent.Create(_insertEventHandler);
+
+                _currentSheet = _doc.ActiveView as ViewSheet;
+
+                GenerateQrCommand = new RelayCommand(GenerateQr, CanExecuteGenerateQr);
+                SaveQrCommand = new RelayCommand(SaveQr, () => CanSave);
+                InsertQrCommand = new RelayCommand(InsertQr, () => CanInsert);
+                UseSheetDataCommand = new RelayCommand(UseSheetData, () => CanUseSheetData);
+                OpenInViewerCommand = new RelayCommand(OpenInViewer, () => CanSave);
+
+                if (autoFillFromSheet && _currentSheet != null)
+                {
+                    UseSheetData();
+                }
+
+                OnPropertyChanged(nameof(CanUseSheetData));
+                OnPropertyChanged(nameof(CanInsert));
+
+                Logger.LogInfo("QR Window ViewModel initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed to initialize QR Window ViewModel", ex);
+                throw;
+            }
         }
 
         #region Command Implementations
 
         private bool CanExecuteGenerateQr()
         {
-            return _documentInfo != null && _documentInfo.IsValid();
+            if (_documentInfo == null)
+                return false;
+
+            string errorMessage;
+            return _documentInfo.IsValid(out errorMessage);
         }
 
         private void GenerateQr()
         {
             try
             {
-                if (!_documentInfo.IsValid())
+                Logger.LogInfo("Generate QR command executed");
+
+                string errorMessage;
+                if (!_documentInfo.IsValid(out errorMessage))
                 {
-                    MessageBox.Show("Please fill in all fields before generating QR code.",
-                        "Incomplete Data", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Logger.LogWarning($"Validation failed: {errorMessage}");
+                    MessageBox.Show(errorMessage, "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -135,11 +155,13 @@ namespace QRCodeRevitAddin.ViewModels
                 QrPreviewImage = BytesToBitmapImage(_currentQrBytes);
 
                 IsQrGenerated = true;
+
+                Logger.LogInfo("QR code generated and preview updated");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to generate QR code:\n\n{ex.Message}",
-                    "Generation Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Logger.LogError("Failed to generate QR code", ex);
+                MessageBox.Show($"Failed to generate QR code:\n\n{ex.Message}", "Generation Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -147,14 +169,15 @@ namespace QRCodeRevitAddin.ViewModels
         {
             try
             {
+                Logger.LogInfo("Save QR command executed");
+
                 if (_currentQrBytes == null)
                 {
-                    MessageBox.Show("Please generate a QR code first.",
-                        "No QR Code", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Logger.LogWarning("No QR code to save");
+                    MessageBox.Show("Please generate a QR code first.", "No QR Code", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                // Show save file dialog
                 SaveFileDialog saveDialog = new SaveFileDialog
                 {
                     Filter = "PNG Image|*.png",
@@ -168,12 +191,15 @@ namespace QRCodeRevitAddin.ViewModels
                     File.Copy(tempPath, saveDialog.FileName, true);
 
                     try { File.Delete(tempPath); } catch { }
+
+                    Logger.LogInfo($"QR code saved to: {saveDialog.FileName}");
+                    MessageBox.Show($"QR code saved successfully to:\n{saveDialog.FileName}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to save QR code:\n\n{ex.Message}",
-                    "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Logger.LogError("Failed to save QR code", ex);
+                MessageBox.Show($"Failed to save QR code:\n\n{ex.Message}", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -181,17 +207,19 @@ namespace QRCodeRevitAddin.ViewModels
         {
             try
             {
+                Logger.LogInfo("Insert QR command executed");
+
                 if (_currentQrBytes == null)
                 {
-                    MessageBox.Show("Please generate a QR code first.",
-                        "No QR Code", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Logger.LogWarning("No QR code to insert");
+                    MessageBox.Show("Please generate a QR code first.", "No QR Code", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
                 if (_currentSheet == null)
                 {
-                    MessageBox.Show("Please open a sheet view to insert the QR code.",
-                        "No Sheet View", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Logger.LogWarning("No sheet view active");
+                    MessageBox.Show("Please open a sheet view to insert the QR code.", "No Sheet View", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -202,11 +230,13 @@ namespace QRCodeRevitAddin.ViewModels
 
                 _insertEventHandler.SetInsertData(_currentQrBytes, _currentSheet, insertionPoint);
                 _insertEvent.Raise();
+
+                Logger.LogInfo("QR code insertion triggered");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to insert QR code:\n\n{ex.Message}",
-                    "Insert Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Logger.LogError("Failed to insert QR code", ex);
+                MessageBox.Show($"Failed to insert QR code:\n\n{ex.Message}", "Insert Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -214,20 +244,22 @@ namespace QRCodeRevitAddin.ViewModels
         {
             try
             {
+                Logger.LogInfo("Use Sheet Data command executed");
+
                 if (_currentSheet == null)
                 {
-                    MessageBox.Show("Please select a sheet view first.\n\nOpen a sheet in Revit, then click this button.",
-                        "No Sheet Selected", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Logger.LogWarning("No sheet selected");
+                    MessageBox.Show("Please select a sheet view first.\n\nOpen a sheet in Revit, then click this button.", "No Sheet Selected", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                // Extract data from sheet
                 DocumentInfo = _service.ExtractSheetData(_currentSheet);
+                Logger.LogInfo("Sheet data extracted and populated");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to extract sheet data:\n\n{ex.Message}",
-                    "Extraction Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Logger.LogError("Failed to extract sheet data", ex);
+                MessageBox.Show($"Failed to extract sheet data:\n\n{ex.Message}", "Extraction Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -235,19 +267,24 @@ namespace QRCodeRevitAddin.ViewModels
         {
             try
             {
+                Logger.LogInfo("Open in Viewer command executed");
+
                 if (_currentQrBytes == null)
                 {
-                    MessageBox.Show("Please generate a QR code first.",
-                        "No QR Code", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Logger.LogWarning("No QR code to view");
+                    MessageBox.Show("Please generate a QR code first.", "No QR Code", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
+
                 string tempPath = _service.CreateTempQrFile(_currentQrBytes);
                 _service.OpenQrInViewer(tempPath);
+
+                Logger.LogInfo("QR code opened in viewer");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to open QR code in viewer:\n\n{ex.Message}",
-                    "Viewer Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Logger.LogError("Failed to open QR code in viewer", ex);
+                MessageBox.Show($"Failed to open QR code in viewer:\n\n{ex.Message}", "Viewer Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

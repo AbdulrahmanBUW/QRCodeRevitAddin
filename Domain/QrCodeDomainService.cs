@@ -5,6 +5,7 @@ using System.IO;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using QRCoder;
+using QRCodeRevitAddin.Utils;
 
 namespace QRCodeRevitAddin.Domain
 {
@@ -16,11 +17,14 @@ namespace QRCodeRevitAddin.Domain
         {
             if (string.IsNullOrWhiteSpace(content))
             {
+                Logger.LogError("QR code content cannot be empty");
                 throw new ArgumentException("QR code content cannot be empty", nameof(content));
             }
 
             try
             {
+                Logger.LogInfo("Generating QR code");
+
                 using (QRCodeGenerator qrGenerator = new QRCodeGenerator())
                 {
                     QRCodeData qrCodeData = qrGenerator.CreateQrCode(content, QRCodeGenerator.ECCLevel.Q);
@@ -37,7 +41,9 @@ namespace QRCodeRevitAddin.Domain
                                 using (MemoryStream ms = new MemoryStream())
                                 {
                                     resizedBitmap.Save(ms, ImageFormat.Png);
-                                    return ms.ToArray();
+                                    byte[] result = ms.ToArray();
+                                    Logger.LogInfo($"QR code generated successfully, size: {result.Length} bytes");
+                                    return result;
                                 }
                             }
                         }
@@ -46,23 +52,32 @@ namespace QRCodeRevitAddin.Domain
             }
             catch (Exception ex)
             {
+                Logger.LogError("Failed to generate QR code", ex);
                 throw new InvalidOperationException($"Failed to generate QR code: {ex.Message}", ex);
             }
         }
 
         public string CreateTempQrFile(byte[] qrBytes)
         {
-            string tempPath = Path.Combine(Path.GetTempPath(), $"QRCode_{Guid.NewGuid()}.png");
-
-            // Ensure directory exists
-            string directory = Path.GetDirectoryName(tempPath);
-            if (!Directory.Exists(directory))
+            try
             {
-                Directory.CreateDirectory(directory);
-            }
+                string tempPath = Path.Combine(Path.GetTempPath(), $"QRCode_{Guid.NewGuid()}.png");
 
-            File.WriteAllBytes(tempPath, qrBytes);
-            return tempPath;
+                string directory = Path.GetDirectoryName(tempPath);
+                if (!Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.WriteAllBytes(tempPath, qrBytes);
+                Logger.LogInfo($"Temporary QR file created: {tempPath}");
+                return tempPath;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed to create temporary QR file", ex);
+                throw;
+            }
         }
 
         public Element InsertQrIntoSheet(Document doc, ViewSheet sheet, byte[] qrBytes, XYZ insertionPoint)
@@ -76,6 +91,8 @@ namespace QRCodeRevitAddin.Domain
 
             try
             {
+                Logger.LogInfo($"Inserting QR code into sheet: {sheet.Name}");
+
                 tempFilePath = CreateTempQrFile(qrBytes);
 
                 using (Transaction trans = new Transaction(doc, "Insert QR Code"))
@@ -88,7 +105,10 @@ namespace QRCodeRevitAddin.Domain
                         ImageType imageType = ImageType.Create(doc, imageTypeOptions);
 
                         if (imageType == null)
+                        {
+                            Logger.LogError("Failed to create ImageType");
                             throw new InvalidOperationException("Failed to create ImageType");
+                        }
 
                         imageType.Name = $"QRCode_{DateTime.Now:yyyyMMdd_HHmmss}";
 
@@ -99,16 +119,18 @@ namespace QRCodeRevitAddin.Domain
                         if (imageInstance != null)
                         {
                             SetImageSize(imageInstance, 2.0);
-
                             trans.Commit();
+                            Logger.LogInfo($"QR code inserted successfully, ID: {imageInstance.Id}");
                             return imageInstance;
                         }
 
+                        Logger.LogError("Could not create image instance");
                         throw new InvalidOperationException("Could not create image instance");
                     }
                     catch (Exception ex)
                     {
                         trans.RollBack();
+                        Logger.LogError("Failed to insert QR code, transaction rolled back", ex);
                         throw new InvalidOperationException($"Failed to insert QR: {ex.Message}", ex);
                     }
                 }
@@ -117,7 +139,15 @@ namespace QRCodeRevitAddin.Domain
             {
                 if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
                 {
-                    try { File.Delete(tempFilePath); } catch { }
+                    try
+                    {
+                        File.Delete(tempFilePath);
+                        Logger.LogInfo("Temporary file cleaned up");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning($"Failed to delete temporary file: {ex.Message}");
+                    }
                 }
             }
         }
@@ -145,25 +175,41 @@ namespace QRCodeRevitAddin.Domain
                 {
                     heightParam.Set(sizeInFeet);
                 }
+
+                Logger.LogInfo($"Image size set to {sizeInInches} inches");
             }
-            catch
+            catch (Exception ex)
             {
-                // The User can resize manually
+                Logger.LogWarning($"Could not set image size: {ex.Message}");
             }
         }
 
         public Models.DocumentInfo ExtractSheetData(ViewSheet sheet)
         {
             if (sheet == null)
+            {
+                Logger.LogError("Sheet is null");
                 throw new ArgumentNullException(nameof(sheet));
+            }
 
-            string dwgNo = GetParameterValueAsString(sheet, "TLBL_DWG_NO");
-            string sheetName = sheet.Name ?? string.Empty;
-            string revision = ExtractRevisionFromSheet(sheet);
-            string date = GetSheetIssueDate(sheet);
-            string checkedBy = GetParameterValueAsString(sheet, "TLBL_CHECKEDBY");
+            try
+            {
+                Logger.LogInfo($"Extracting data from sheet: {sheet.Name}");
 
-            return new Models.DocumentInfo(dwgNo, sheetName, revision, date, checkedBy);
+                string dwgNo = GetParameterValueAsString(sheet, "TLBL_DWG_NO");
+                string sheetName = sheet.Name ?? string.Empty;
+                string revision = ExtractRevisionFromSheet(sheet);
+                string date = GetSheetIssueDate(sheet);
+                string checkedBy = GetParameterValueAsString(sheet, "TLBL_CHECKEDBY");
+
+                Logger.LogInfo("Sheet data extracted successfully");
+                return new Models.DocumentInfo(dwgNo, sheetName, revision, date, checkedBy);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed to extract sheet data", ex);
+                throw;
+            }
         }
 
         private string GetParameterValueAsString(ViewSheet sheet, string parameterName)
@@ -182,7 +228,11 @@ namespace QRCodeRevitAddin.Domain
                 }
                 return "";
             }
-            catch { return ""; }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"Failed to get parameter {parameterName}: {ex.Message}");
+                return "";
+            }
         }
 
         private string GetSheetIssueDate(ViewSheet sheet)
@@ -196,9 +246,13 @@ namespace QRCodeRevitAddin.Domain
                     if (!string.IsNullOrWhiteSpace(issueDate))
                         return issueDate;
                 }
-                return DateTime.Now.ToString("dd/MM/yyyy");
+                return DateValidator.GetTodayFormatted();
             }
-            catch { return DateTime.Now.ToString("dd/MM/yyyy"); }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"Failed to get sheet issue date: {ex.Message}");
+                return DateValidator.GetTodayFormatted();
+            }
         }
 
         private string ExtractRevisionFromSheet(ViewSheet sheet)
@@ -215,20 +269,29 @@ namespace QRCodeRevitAddin.Domain
 
                 return "";
             }
-            catch { return ""; }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"Failed to extract revision: {ex.Message}");
+                return "";
+            }
         }
 
         public void OpenQrInViewer(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            {
+                Logger.LogError($"QR code file not found: {filePath}");
                 throw new FileNotFoundException("QR code file not found", filePath);
+            }
 
             try
             {
+                Logger.LogInfo($"Opening QR code in viewer: {filePath}");
                 System.Diagnostics.Process.Start(filePath);
             }
             catch (Exception ex)
             {
+                Logger.LogError("Failed to open QR code in viewer", ex);
                 throw new InvalidOperationException($"Failed to open QR code in viewer: {ex.Message}", ex);
             }
         }

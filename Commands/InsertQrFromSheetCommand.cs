@@ -3,6 +3,7 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using QRCodeRevitAddin.Views;
+using QRCodeRevitAddin.Utils;
 
 namespace QRCodeRevitAddin.Commands
 {
@@ -17,21 +18,24 @@ namespace QRCodeRevitAddin.Commands
         {
             try
             {
+                Logger.LogInfo("InsertQrFromSheetCommand executed");
+
                 UIDocument uiDoc = commandData.Application.ActiveUIDocument;
-                
+
                 if (uiDoc == null)
                 {
+                    Logger.LogError("No active UIDocument");
                     TaskDialog.Show("Error", "No active Revit document found.\n\nPlease open a project first.");
                     return Result.Failed;
                 }
 
                 Document doc = uiDoc.Document;
 
-                // Check if current view is a sheet
                 ViewSheet sheet = doc.ActiveView as ViewSheet;
-                
+
                 if (sheet == null)
                 {
+                    Logger.LogWarning("Active view is not a sheet");
                     TaskDialog.Show("Not a Sheet View",
                         "Please switch to a Sheet view before using this command.\n\n" +
                         "Quick Insert from Sheet only works when you have a sheet view active.\n\n" +
@@ -43,12 +47,14 @@ namespace QRCodeRevitAddin.Commands
                     return Result.Cancelled;
                 }
 
+                Logger.LogInfo($"Opening QR window with sheet: {sheet.Name}");
                 QrWindow.Show(uiDoc, autoFillFromSheet: true);
 
                 return Result.Succeeded;
             }
             catch (Exception ex)
             {
+                Logger.LogError("InsertQrFromSheetCommand failed", ex);
                 message = $"Failed to insert QR from sheet: {ex.Message}";
                 TaskDialog.Show("Error", message);
                 return Result.Failed;

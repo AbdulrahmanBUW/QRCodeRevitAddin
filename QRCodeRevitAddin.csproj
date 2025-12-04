@@ -64,6 +64,8 @@
     <Compile Include="Commands\InsertQrFromSheetCommand.cs" />
     <Compile Include="Domain\QrCodeDomainService.cs" />
     <Compile Include="Models\DocumentInfo.cs" />
+    <Compile Include="Utils\DateValidator.cs" />
+    <Compile Include="Utils\Logger.cs" />
     <Compile Include="ViewModels\QrWindowViewModel.cs" />
     <Compile Include="Views\QrWindow.xaml.cs">
       <DependentUpon>QrWindow.xaml</DependentUpon>

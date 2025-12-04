@@ -5,6 +5,7 @@ using System.Windows.Media.Imaging;
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.UI;
+using QRCodeRevitAddin.Utils;
 
 namespace QRCodeRevitAddin
 {
@@ -16,14 +17,19 @@ namespace QRCodeRevitAddin
         {
             try
             {
+                Logger.LogInfo("QR Code Add-in startup initiated");
+
                 string tabName = "QR Tools";
                 try
                 {
                     application.CreateRibbonTab(tabName);
+                    Logger.LogInfo("Ribbon tab created: " + tabName);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Logger.LogWarning("Ribbon tab already exists: " + ex.Message);
                 }
+
                 RibbonPanel panel = application.CreateRibbonPanel(tabName, "QR Code Operations");
 
                 string assemblyPath = Assembly.GetExecutingAssembly().Location;
@@ -61,12 +67,15 @@ namespace QRCodeRevitAddin
 
                 PushButton button2 = panel.AddItem(buttonData2) as PushButton;
 
+                Logger.LogInfo("QR Code Add-in startup completed successfully");
+                Logger.LogInfo($"Log directory: {Logger.GetLogDirectory()}");
+
                 return Result.Succeeded;
             }
             catch (Exception ex)
             {
-                TaskDialog.Show("Error",
-                    $"Failed to initialize QR Code Add-in:\n\n{ex.Message}\n\n{ex.StackTrace}");
+                Logger.LogError("Failed to initialize QR Code Add-in", ex);
+                TaskDialog.Show("Error", $"Failed to initialize QR Code Add-in:\n\n{ex.Message}\n\n{ex.StackTrace}");
                 return Result.Failed;
             }
         }
@@ -89,19 +98,23 @@ namespace QRCodeRevitAddin
                         Uri iconUri = new Uri(iconPath, UriKind.Absolute);
                         BitmapImage icon = new BitmapImage(iconUri);
                         buttonData.LargeImage = icon;
-                        return; // Success, exit
+                        Logger.LogInfo($"Icon loaded from: {iconPath}");
+                        return;
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Logger.LogWarning($"Failed to load icon from {iconPath}: {ex.Message}");
                     continue;
                 }
             }
+
+            Logger.LogWarning("No icon found, using default");
         }
 
         public Result OnShutdown(UIControlledApplication application)
         {
-            // Cleanup if needed
+            Logger.LogInfo("QR Code Add-in shutdown");
             return Result.Succeeded;
         }
     }
