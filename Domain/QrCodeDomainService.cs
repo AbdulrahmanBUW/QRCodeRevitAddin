@@ -8,16 +8,10 @@ using QRCoder;
 
 namespace QRCodeRevitAddin.Domain
 {
-    /// <summary>
-    /// Domain service for QR code generation and insertion into Revit documents.
-    /// </summary>
     public class QrCodeDomainService
     {
         private const int QR_PIXEL_SIZE = 300;
 
-        /// <summary>
-        /// Generates QR code image as PNG byte array.
-        /// </summary>
         public byte[] GenerateQrCodeBytes(string content)
         {
             if (string.IsNullOrWhiteSpace(content))
@@ -56,9 +50,6 @@ namespace QRCodeRevitAddin.Domain
             }
         }
 
-        /// <summary>
-        /// Creates a temporary file with QR code image and returns the path.
-        /// </summary>
         public string CreateTempQrFile(byte[] qrBytes)
         {
             string tempPath = Path.Combine(Path.GetTempPath(), $"QRCode_{Guid.NewGuid()}.png");
@@ -74,9 +65,6 @@ namespace QRCodeRevitAddin.Domain
             return tempPath;
         }
 
-        /// <summary>
-        /// Simple method that actually works - inserts QR code onto sheet
-        /// </summary>
         public Element InsertQrIntoSheet(Document doc, ViewSheet sheet, byte[] qrBytes, XYZ insertionPoint)
         {
             if (doc == null) throw new ArgumentNullException(nameof(doc));
@@ -88,7 +76,6 @@ namespace QRCodeRevitAddin.Domain
 
             try
             {
-                // Save QR code to temp file
                 tempFilePath = CreateTempQrFile(qrBytes);
 
                 using (Transaction trans = new Transaction(doc, "Insert QR Code"))
@@ -97,7 +84,6 @@ namespace QRCodeRevitAddin.Domain
 
                     try
                     {
-                        // Import the image
                         ImageTypeOptions imageTypeOptions = new ImageTypeOptions(tempFilePath, false, ImageTypeSource.Import);
                         ImageType imageType = ImageType.Create(doc, imageTypeOptions);
 
@@ -106,20 +92,15 @@ namespace QRCodeRevitAddin.Domain
 
                         imageType.Name = $"QRCode_{DateTime.Now:yyyyMMdd_HHmmss}";
 
-                        // SIMPLEST APPROACH: Let Revit handle the placement
-                        // Create ImagePlacementOptions with default constructor
                         ImagePlacementOptions placementOptions = new ImagePlacementOptions();
 
-                        // Create the image instance on the sheet
                         ImageInstance imageInstance = ImageInstance.Create(doc, sheet, imageType.Id, placementOptions);
 
                         if (imageInstance != null)
                         {
-                            // Success! QR code is on the sheet
                             SetImageSize(imageInstance, 2.0);
-                            trans.Commit();
 
-                            TaskDialog.Show("Success", "QR code inserted onto sheet!");
+                            trans.Commit();
                             return imageInstance;
                         }
 
@@ -141,16 +122,12 @@ namespace QRCodeRevitAddin.Domain
             }
         }
 
-        /// <summary>
-        /// Sets the image size in inches.
-        /// </summary>
         private void SetImageSize(ImageInstance imageInstance, double sizeInInches)
         {
             try
             {
                 double sizeInFeet = sizeInInches / 12.0;
 
-                // Try to set width
                 Parameter widthParam = imageInstance.LookupParameter("Width");
                 if (widthParam == null)
                     widthParam = imageInstance.LookupParameter("Image Width");
@@ -160,7 +137,6 @@ namespace QRCodeRevitAddin.Domain
                     widthParam.Set(sizeInFeet);
                 }
 
-                // Try to set height
                 Parameter heightParam = imageInstance.LookupParameter("Height");
                 if (heightParam == null)
                     heightParam = imageInstance.LookupParameter("Image Height");
@@ -172,30 +148,10 @@ namespace QRCodeRevitAddin.Domain
             }
             catch
             {
-                // If we can't set the size, that's OK - user can resize manually
+                // The User can resize manually
             }
         }
 
-        /// <summary>
-        /// Quick insert at a reasonable location on the sheet.
-        /// </summary>
-        public Element QuickInsertQrIntoSheet(Document doc, ViewSheet sheet, byte[] qrBytes)
-        {
-            // Get sheet boundaries
-            BoundingBoxUV outline = sheet.Outline;
-
-            // Place in the upper left quadrant (avoiding title block)
-            double x = outline.Min.U + (outline.Max.U - outline.Min.U) * 0.25;
-            double y = outline.Min.V + (outline.Max.V - outline.Min.V) * 0.75;
-
-            XYZ insertionPoint = new XYZ(x, y, 0);
-
-            return InsertQrIntoSheet(doc, sheet, qrBytes, insertionPoint);
-        }
-
-        /// <summary>
-        /// Extracts sheet information from a Revit ViewSheet.
-        /// </summary>
         public Models.DocumentInfo ExtractSheetData(ViewSheet sheet)
         {
             if (sheet == null)
@@ -210,9 +166,6 @@ namespace QRCodeRevitAddin.Domain
             return new Models.DocumentInfo(dwgNo, sheetName, revision, date, checkedBy);
         }
 
-        /// <summary>
-        /// Gets parameter value as string by parameter name.
-        /// </summary>
         private string GetParameterValueAsString(ViewSheet sheet, string parameterName)
         {
             try
@@ -232,9 +185,6 @@ namespace QRCodeRevitAddin.Domain
             catch { return ""; }
         }
 
-        /// <summary>
-        /// Gets Sheet Issue Date from built-in parameter.
-        /// </summary>
         private string GetSheetIssueDate(ViewSheet sheet)
         {
             try
@@ -251,9 +201,6 @@ namespace QRCodeRevitAddin.Domain
             catch { return DateTime.Now.ToString("dd/MM/yyyy"); }
         }
 
-        /// <summary>
-        /// Attempts to extract revision information from a sheet.
-        /// </summary>
         private string ExtractRevisionFromSheet(ViewSheet sheet)
         {
             try
@@ -271,9 +218,6 @@ namespace QRCodeRevitAddin.Domain
             catch { return ""; }
         }
 
-        /// <summary>
-        /// Opens QR code file in external viewer/browser.
-        /// </summary>
         public void OpenQrInViewer(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))

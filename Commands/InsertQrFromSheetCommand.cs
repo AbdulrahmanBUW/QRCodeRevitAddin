@@ -6,21 +6,10 @@ using QRCodeRevitAddin.Views;
 
 namespace QRCodeRevitAddin.Commands
 {
-    /// <summary>
-    /// External command to quickly insert a QR code from sheet data.
-    /// Opens the QR window pre-filled with data extracted from the current sheet.
-    /// </summary>
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class InsertQrFromSheetCommand : IExternalCommand
     {
-        /// <summary>
-        /// Executes the command to insert QR from sheet.
-        /// </summary>
-        /// <param name="commandData">Command data from Revit</param>
-        /// <param name="message">Error message to return to Revit</param>
-        /// <param name="elements">Elements to highlight in case of failure</param>
-        /// <returns>Result indicating success or failure</returns>
         public Result Execute(
             ExternalCommandData commandData,
             ref string message,
@@ -28,7 +17,6 @@ namespace QRCodeRevitAddin.Commands
         {
             try
             {
-                // Get UI document
                 UIDocument uiDoc = commandData.Application.ActiveUIDocument;
                 
                 if (uiDoc == null)
@@ -55,7 +43,6 @@ namespace QRCodeRevitAddin.Commands
                     return Result.Cancelled;
                 }
 
-                // Show the QR window with auto-fill from sheet
                 QrWindow.Show(uiDoc, autoFillFromSheet: true);
 
                 return Result.Succeeded;

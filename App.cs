@@ -8,24 +8,14 @@ using Autodesk.Revit.UI;
 
 namespace QRCodeRevitAddin
 {
-    /// <summary>
-    /// Main application class that implements IExternalApplication.
-    /// Handles add-in initialization and creates the ribbon UI.
-    /// </summary>
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     public class App : IExternalApplication
     {
-        /// <summary>
-        /// Called when Revit starts up. Initializes the add-in and creates ribbon UI.
-        /// </summary>
-        /// <param name="application">The Revit application object</param>
-        /// <returns>Success or failure status</returns>
         public Result OnStartup(UIControlledApplication application)
         {
             try
             {
-                // Create custom ribbon tab
                 string tabName = "QR Tools";
                 try
                 {
@@ -33,17 +23,12 @@ namespace QRCodeRevitAddin
                 }
                 catch (Exception)
                 {
-                    // Tab might already exist, continue
                 }
-
-                // Create ribbon panel
                 RibbonPanel panel = application.CreateRibbonPanel(tabName, "QR Code Operations");
 
-                // Get assembly path for button images and commands
                 string assemblyPath = Assembly.GetExecutingAssembly().Location;
                 string assemblyDir = Path.GetDirectoryName(assemblyPath);
 
-                // Create "Generate QR Code" button
                 PushButtonData buttonData1 = new PushButtonData(
                     "GenerateQRCode",
                     "Generate\nQR Code",
@@ -55,28 +40,12 @@ namespace QRCodeRevitAddin
                     "extract data from the current sheet to generate a QR code. The QR code can be previewed, saved as " +
                     "a PNG file, or inserted directly into the active sheet.";
 
-                // Set button image (try to load custom icon, fallback to no icon)
-                try
-                {
-                    string iconPath = Path.Combine(assemblyDir, "Resources", "qr-icon-32.png");
-                    if (File.Exists(iconPath))
-                    {
-                        Uri iconUri = new Uri(iconPath);
-                        BitmapImage icon = new BitmapImage(iconUri);
-                        buttonData1.LargeImage = icon;
-                    }
-                }
-                catch
-                {
-                    // Icon loading failed, continue without icon
-                }
+                SetButtonIcon(buttonData1, assemblyDir, "qr-icon-32.png");
 
                 PushButton button1 = panel.AddItem(buttonData1) as PushButton;
 
-                // Add separator
                 panel.AddSeparator();
 
-                // Create "Quick Insert from Sheet" button
                 PushButtonData buttonData2 = new PushButtonData(
                     "QuickInsertQR",
                     "Quick Insert\nfrom Sheet",
@@ -88,45 +57,48 @@ namespace QRCodeRevitAddin
                     "from the selected sheet, generates a QR code, and opens the window pre-filled with this data. " +
                     "Perfect for rapid QR code insertion on multiple sheets.";
 
-                // Set button image
-                try
-                {
-                    string iconPath = Path.Combine(assemblyDir, "Resources", "qr-icon-32.png");
-                    if (File.Exists(iconPath))
-                    {
-                        Uri iconUri = new Uri(iconPath);
-                        BitmapImage icon = new BitmapImage(iconUri);
-                        buttonData2.LargeImage = icon;
-                    }
-                }
-                catch
-                {
-                    // Icon loading failed, continue without icon
-                }
+                SetButtonIcon(buttonData2, assemblyDir, "qr-icon-32.png");
 
                 PushButton button2 = panel.AddItem(buttonData2) as PushButton;
-
-                // Log successful initialization
-                TaskDialog.Show("QR Code Add-in", 
-                    "QR Code Add-in loaded successfully!\n\n" +
-                    "Look for the 'QR Tools' tab in the ribbon.",
-                    TaskDialogCommonButtons.Ok);
 
                 return Result.Succeeded;
             }
             catch (Exception ex)
             {
-                TaskDialog.Show("Error", 
+                TaskDialog.Show("Error",
                     $"Failed to initialize QR Code Add-in:\n\n{ex.Message}\n\n{ex.StackTrace}");
                 return Result.Failed;
             }
         }
 
-        /// <summary>
-        /// Called when Revit shuts down. Performs cleanup.
-        /// </summary>
-        /// <param name="application">The Revit application object</param>
-        /// <returns>Success or failure status</returns>
+        private void SetButtonIcon(PushButtonData buttonData, string assemblyDir, string iconFileName)
+        {
+            string[] possiblePaths = new string[]
+            {
+                Path.Combine(assemblyDir, "Resources", iconFileName),
+                Path.Combine(assemblyDir, iconFileName),
+                Path.Combine(assemblyDir, "..", "Resources", iconFileName)
+            };
+
+            foreach (string iconPath in possiblePaths)
+            {
+                try
+                {
+                    if (File.Exists(iconPath))
+                    {
+                        Uri iconUri = new Uri(iconPath, UriKind.Absolute);
+                        BitmapImage icon = new BitmapImage(iconUri);
+                        buttonData.LargeImage = icon;
+                        return; // Success, exit
+                    }
+                }
+                catch
+                {
+                    continue;
+                }
+            }
+        }
+
         public Result OnShutdown(UIControlledApplication application)
         {
             // Cleanup if needed

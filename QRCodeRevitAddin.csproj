@@ -87,7 +87,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\qr-icon-32.png" />
+    <EmbeddedResource Include="Resources\qr-icon-32.png" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

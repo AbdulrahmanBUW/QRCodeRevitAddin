@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="QR Code Generator" 
-        Height="650" 
+        Height="633" 
         Width="900"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize"
@@ -102,7 +102,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Left Column: Input Fields -->
-            <GroupBox Grid.Column="0" Header="Document Information" Padding="10">
+            <GroupBox Grid.Column="0" Header="Document Information" Padding="10" Margin="0,0,0,86">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
@@ -151,7 +151,7 @@
                 </Grid.RowDefinitions>
 
                 <!-- QR Preview -->
-                <GroupBox Grid.Row="0" Header="QR Code Preview" Padding="10">
+                <GroupBox Header="QR Code Preview" Padding="10" Height="392" VerticalAlignment="Center">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*"/>
@@ -185,7 +185,7 @@
                 </GroupBox>
 
                 <!-- Action Buttons -->
-                <StackPanel Grid.Row="1" Margin="0,10,0,0">
+                <StackPanel Grid.Row="1">
                     <Button Content="🔨 Generate QR Code" 
                             Style="{StaticResource PrimaryButton}"
                             Command="{Binding GenerateQrCommand}"
@@ -207,19 +207,12 @@
                                 ToolTip="Open QR code in external image viewer"/>
                     </UniformGrid>
 
-                    <UniformGrid Columns="2">
-                        <Button Content="📍 Insert" 
-                                Style="{StaticResource SecondaryButton}"
-                                Command="{Binding InsertQrCommand}"
-                                IsEnabled="{Binding CanInsert}"
-                                ToolTip="Click to place QR code at a specific location on the sheet"/>
-
-                        <Button Content="⚡ Quick Insert" 
-                                Style="{StaticResource SecondaryButton}"
-                                Command="{Binding QuickInsertCommand}"
-                                IsEnabled="{Binding CanInsert}"
-                                ToolTip="Quickly insert QR code at a random location on the sheet"/>
-                    </UniformGrid>
+                    <Button Content="📍 Insert into Sheet" 
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding InsertQrCommand}"
+                            IsEnabled="{Binding CanInsert}"
+                            ToolTip="Insert QR code into the active sheet"
+                            Margin="5,5,5,5"/>
                 </StackPanel>
             </Grid>
         </Grid>

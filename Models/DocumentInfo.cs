@@ -3,10 +3,6 @@ using System.ComponentModel;
 
 namespace QRCodeRevitAddin.Models
 {
-    /// <summary>
-    /// Model class representing the information to be encoded in a QR code.
-    /// Implements INotifyPropertyChanged for data binding support.
-    /// </summary>
     public class DocumentInfo : INotifyPropertyChanged
     {
         private string _name;
@@ -15,11 +11,6 @@ namespace QRCodeRevitAddin.Models
         private string _date;
         private string _checkedBy;
 
-        /// <summary>
-        /// Name or sheet number field.
-        /// For manual entry: Document/Drawing name.
-        /// For sheet extraction: TLBL_DWG_NO parameter.
-        /// </summary>
         public string Name
         {
             get => _name;
@@ -34,11 +25,6 @@ namespace QRCodeRevitAddin.Models
             }
         }
 
-        /// <summary>
-        /// Revision field.
-        /// For manual entry: Custom revision text.
-        /// For sheet extraction: Sheet name or current revision.
-        /// </summary>
         public string Revision
         {
             get => _revision;
@@ -53,11 +39,6 @@ namespace QRCodeRevitAddin.Models
             }
         }
 
-        /// <summary>
-        /// Project field.
-        /// For manual entry: Project name.
-        /// For sheet extraction: Additional project information.
-        /// </summary>
         public string Project
         {
             get => _project;
@@ -72,11 +53,6 @@ namespace QRCodeRevitAddin.Models
             }
         }
 
-        /// <summary>
-        /// Date field in dd/MM/yyyy format.
-        /// For sheet extraction: Sheet Issue Date parameter.
-        /// Defaults to today's date.
-        /// </summary>
         public string Date
         {
             get => _date;
@@ -91,10 +67,6 @@ namespace QRCodeRevitAddin.Models
             }
         }
 
-        /// <summary>
-        /// Checked By field.
-        /// For sheet extraction: TLBL_CHECKEDBY parameter.
-        /// </summary>
         public string CheckedBy
         {
             get => _checkedBy;
@@ -109,10 +81,6 @@ namespace QRCodeRevitAddin.Models
             }
         }
 
-        /// <summary>
-        /// Combined text that will be encoded in the QR code.
-        /// Format: "{Name} | {Revision} | {Project} | {Date} | {CheckedBy}"
-        /// </summary>
         public string CombinedText
         {
             get
@@ -121,9 +89,6 @@ namespace QRCodeRevitAddin.Models
             }
         }
 
-        /// <summary>
-        /// Default constructor. Initializes Date to today in dd/MM/yyyy format.
-        /// </summary>
         public DocumentInfo()
         {
             _name = string.Empty;
@@ -133,9 +98,6 @@ namespace QRCodeRevitAddin.Models
             _checkedBy = string.Empty;
         }
 
-        /// <summary>
-        /// Constructor with all fields.
-        /// </summary>
         public DocumentInfo(string name, string revision, string project, string date, string checkedBy)
         {
             _name = name ?? string.Empty;
@@ -145,9 +107,6 @@ namespace QRCodeRevitAddin.Models
             _checkedBy = checkedBy ?? string.Empty;
         }
 
-        /// <summary>
-        /// Validates that all required fields have values.
-        /// </summary>
         public bool IsValid()
         {
             return !string.IsNullOrWhiteSpace(Name) &&
@@ -157,9 +116,6 @@ namespace QRCodeRevitAddin.Models
                    !string.IsNullOrWhiteSpace(CheckedBy);
         }
 
-        /// <summary>
-        /// Creates a copy of this DocumentInfo object.
-        /// </summary>
         public DocumentInfo Clone()
         {
             return new DocumentInfo(Name, Revision, Project, Date, CheckedBy);
